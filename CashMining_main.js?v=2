@@ -1,0 +1,121 @@
+(function ($) {
+    $.fn.progressTimer = function (options) {
+		var settings = $.extend({}, $.fn.progressTimer.defaults, options);
+
+        this.each(function () {
+            $(this).empty();
+            var barContainer = $("<div>").addClass("progress active progress-striped");
+            var bar = $("<div>").addClass("progress-bar progress-bar-striped progress-bar-animated").addClass(settings.baseStyle)
+                .attr("role", "progressbar")
+                .attr("aria-valuenow", "0")
+                .attr("aria-valuemin", "0")
+                .attr("aria-valuemax", settings.timeLimit);
+
+            bar.appendTo(barContainer);
+            barContainer.appendTo($(this));
+            
+            var start = new Date();
+            var limit = settings.timeLimit * 1000;
+            var interval = window.setInterval(function () {
+                var elapsed = new Date() - start;
+                bar.width(((elapsed / limit) * 100) + "%");
+
+                if (limit - elapsed <= 5000)
+                    bar.removeClass(settings.baseStyle)
+                       .removeClass(settings.completeStyle)
+                       .addClass(settings.warningStyle);
+
+                if (elapsed >= limit) {
+                    window.clearInterval(interval);
+
+                    bar.removeClass(settings.baseStyle)
+                       .removeClass(settings.warningStyle)
+                       .addClass(settings.completeStyle);
+
+                    settings.onFinish.call(this);
+                }
+            }, 300);
+        });
+
+        return this;
+    };
+
+    $.fn.progressTimer.defaults = {
+        timeLimit: 1,
+        warningThreshold: 5,
+        onFinish: function () {},
+		baseStyle: 'bg-primary',
+        warningStyle: 'bg-danger',
+        completeStyle: 'bg-success'
+    };
+}(jQuery));
+
+function showadbar(){
+	$("#status").fadeOut(1000, function(){
+		$("#progress").progressTimer({
+			timeLimit: secs,
+			onFinish: function () {endprogress()}
+		});
+	});
+}
+
+var captchaResult = false;
+function endprogress(){
+	 $("#progress").fadeOut(1000, function(){
+		$("#status").html('<div class="alert alert-info" role="alert"><i class="fa fa-cog fa-spin fa-fw"></i> '+adwait+'</div>').fadeIn('fast');
+		if(sid == 'no_page') {
+			document.location.href = surf_file + "?key=" + hash
+		} else {
+			$.ajax({
+				type: "POST",
+				url: "system/ajax.php",
+				data: "a=mining&data=" + sid + "&token=" + token + "&captcha=" + captchaResult,
+				dataType: "json",
+				success: function(data) {
+					if(data.status == 0){
+						$("#status").html(data.msg).fadeIn('slow');
+					}else{
+						$("#status").html(data.msg).fadeIn('slow');
+					}
+
+					window.setTimeout(function() {
+						document.location.href = surf_file + "?previous=" + sid + "&key=" + hash;
+					}, 1000);
+				}
+			});
+		}
+	});
+}	
+
+function showCaptcha() {
+	ACPuzzle.create(solve_key, 'captcha');
+	$('#captchaForm').modal('show');
+}
+
+function captcha() {
+	var challenge  = $("[name='adcopy_challenge']").val();
+	var response  = $("[name='adcopy_response']").val();
+	$("#captchaResult").html('<div class="alert alert-info" role="alert"><i class="fa fa-cog fa-spin fa-fw"></i> '+adwait+'</div>');
+	$.ajax({
+		type: "POST",
+		url: "system/ajax.php",
+		data: "a=captcha&challenge=" + challenge + "&response=" + response,
+		dataType: "json",
+		success: function(data) {
+			if(data.status == 0){
+				$("#captchaResult").html(data.msg);
+				ACPuzzle.create(solve_key, 'captcha');
+			}else{
+				captchaResult = data.token;
+				$("#captchaResult").html(data.msg);
+				$("#captcha").hide();
+				$(".floatCaptcha").hide();
+				$(".label-container").hide();
+				
+				window.setTimeout(function() {
+					$('#captchaForm').modal('hide');
+				}, 1500);
+			}
+		}
+	});
+}	
